@@ -556,74 +556,28 @@ document.addEventListener('alpine:init', () => {
             this.apiKeyFetcher.response = null;
 
             try {
-                let apiUrl;
-                let fetchOptions = {};
-
-                // Build URL based on endpoint
-                if (this.apiKeyFetcher.endpoint === 'custom') {
-                    apiUrl = this.apiKeyFetcher.customUrl;
-                } else {
-                    const baseUrl = 'https://imonetizeit.com/api/';
-                    apiUrl = baseUrl + this.apiKeyFetcher.endpoint;
-                }
-
-                // For getkey endpoint, use GET with query parameter
-                if (this.apiKeyFetcher.endpoint === 'getkey') {
-                    apiUrl += '?apikey=' + encodeURIComponent(this.apiKeyFetcher.apiKey);
-                    fetchOptions = {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    };
-                } else if (['stats', 'balance', 'points'].includes(this.apiKeyFetcher.endpoint)) {
-                    // For stats/balance/points endpoints
-                    apiUrl += '?apikey=' + encodeURIComponent(this.apiKeyFetcher.apiKey);
-
-                    // Add time period parameter
-                    if (this.apiKeyFetcher.timePeriod) {
-                        apiUrl += '&period=' + encodeURIComponent(this.apiKeyFetcher.timePeriod);
-                    }
-
-                    fetchOptions = {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    };
-                } else {
-                    // For custom endpoints with request body
-                    let body = {};
-
-                    // Try to parse request body if provided
-                    if (this.apiKeyFetcher.requestBody) {
-                        try {
-                            body = JSON.parse(this.apiKeyFetcher.requestBody);
-                        } catch (e) {
-                            throw new Error('Invalid JSON in request body: ' + e.message);
-                        }
-                    }
-
-                    // Add API key to body
-                    body.apikey = this.apiKeyFetcher.apiKey;
-
-                    fetchOptions = {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(body)
-                    };
-                }
-
-                const response = await fetch(apiUrl, fetchOptions);
-
-                if (!response.ok) {
-                    throw new Error('HTTP error! status: ' + response.status);
-                }
+                const response = await fetch('imonetizeit.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        endpoint: this.apiKeyFetcher.endpoint,
+                        apiKey: this.apiKeyFetcher.apiKey,
+                        customUrl: this.apiKeyFetcher.customUrl,
+                        requestBody: this.apiKeyFetcher.requestBody,
+                        timePeriod: this.apiKeyFetcher.timePeriod
+                    })
+                });
 
                 const data = await response.json();
-                this.apiKeyFetcher.response = data;
+
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || ('HTTP error! status: ' + response.status));
+                }
+
+                this.apiKeyFetcher.response = data.response;
                 this.apiKeyFetcher.success = true;
 
                 this.setFlash('API request successful!', 'info');
