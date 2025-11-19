@@ -57,24 +57,42 @@ class LandingController
             'user_lp' => $campaign
         ]);
 
-        // Handle decision
-        if ($decision && isset($decision['target'])) {
-            $targetUrl = $decision['target'];
+        $targetUrl = self::getValidRedirectTarget($decision);
 
-            // Set headers
-            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-            header('Pragma: no-cache');
-            header('Location: ' . $targetUrl, true, 302);
-            exit;
+        if ($targetUrl === null) {
+            $targetUrl = SrpClient::getFallbackUrl();
         }
-
-        // Fallback if API fails
-        $fallbackUrl = SrpClient::getFallbackUrl();
 
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
-        header('Location: ' . $fallbackUrl, true, 302);
+        header('Location: ' . $targetUrl, true, 302);
         exit;
+    }
+
+    private static function getValidRedirectTarget(?array $decision): ?string
+    {
+        if (!is_array($decision)) {
+            return null;
+        }
+
+        if (($decision['decision'] ?? '') !== 'A') {
+            return null;
+        }
+
+        $target = trim((string) ($decision['target'] ?? ''));
+
+        if ($target === '') {
+            return null;
+        }
+
+        $isAbsolute = filter_var($target, FILTER_VALIDATE_URL) && preg_match('/^https?:/i', $target);
+        $isRelative = str_starts_with($target, '/');
+
+        if ($isAbsolute || $isRelative) {
+            return $target;
+        }
+
+        return null;
     }
 
     /**
