@@ -30,11 +30,11 @@ class EnvConfig
         self::init();
 
         $config = [
-            // Database
-            'DB_HOST' => getenv('DB_HOST') ?: 'localhost',
-            'DB_NAME' => getenv('DB_NAME') ?: '',
-            'DB_USER' => getenv('DB_USER') ?: '',
-            'DB_PASS' => getenv('DB_PASS') ?: '',
+            // Database (support both legacy DB_* and SRP_DB_* prefixes)
+            'DB_HOST' => getenv('SRP_DB_HOST') ?: getenv('DB_HOST') ?: 'localhost',
+            'DB_NAME' => getenv('SRP_DB_NAME') ?: getenv('DB_NAME') ?: '',
+            'DB_USER' => getenv('SRP_DB_USER') ?: getenv('DB_USER') ?: '',
+            'DB_PASS' => getenv('SRP_DB_PASS') ?: getenv('DB_PASS') ?: '',
 
             // SRP API
             'SRP_API_URL' => getenv('SRP_API_URL') ?: 'https://trackng.us/decision.php',
@@ -81,6 +81,20 @@ class EnvConfig
 
                 // Update or add
                 $envVars[$key] = $value;
+
+                // Keep SRP_DB_* aliases in sync for database settings
+                $dbAliasMap = [
+                    'DB_HOST' => 'SRP_DB_HOST',
+                    'DB_NAME' => 'SRP_DB_NAME',
+                    'DB_USER' => 'SRP_DB_USER',
+                    'DB_PASS' => 'SRP_DB_PASS',
+                    'DB_PORT' => 'SRP_DB_PORT',
+                    'DB_SOCKET' => 'SRP_DB_SOCKET',
+                ];
+
+                if (isset($dbAliasMap[$key])) {
+                    $envVars[$dbAliasMap[$key]] = $value;
+                }
             }
 
             // Write back to file
@@ -100,6 +114,22 @@ class EnvConfig
             foreach ($newConfig as $key => $value) {
                 putenv("$key=$value");
                 $_ENV[$key] = $value;
+
+                // Set SRP_DB_* aliases in runtime environment as well
+                $dbAliasMap = [
+                    'DB_HOST' => 'SRP_DB_HOST',
+                    'DB_NAME' => 'SRP_DB_NAME',
+                    'DB_USER' => 'SRP_DB_USER',
+                    'DB_PASS' => 'SRP_DB_PASS',
+                    'DB_PORT' => 'SRP_DB_PORT',
+                    'DB_SOCKET' => 'SRP_DB_SOCKET',
+                ];
+
+                if (isset($dbAliasMap[$key])) {
+                    $aliasKey = $dbAliasMap[$key];
+                    putenv("$aliasKey=$value");
+                    $_ENV[$aliasKey] = $value;
+                }
             }
 
             return true;
